@@ -8,3 +8,11 @@
 #--------------------------------------------------------
 
 #Constants & Settings
+
+iSize = 28   #Image Size
+
+iFile = ".ppm" #Image Size
+
+nEpoch = 201 #Number of Epochs/Training Loops
+
+nOutput = 61 #Number of Outputs

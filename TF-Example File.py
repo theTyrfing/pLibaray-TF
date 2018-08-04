@@ -1,6 +1,24 @@
 #import sys
 #sys.path.append('C:\Users\Regan\Documents\GitHub\pLibaray-TF')
 
-import TFuLibaray.py
+from TFuLibaray import *
 
-print (TFuLibaray.pickDirectory())
+dirString = pickDirectory()
+
+print (dirString)
+
+tImage, tLabel = loadPic(dirString)
+
+#dImages(tImage, tLabel)
+
+test = snNetwork()
+
+print (test.seed)
+
+test.configTF()
+
+testPrint(test)
+
+test.training(tImage,tLabel)
+
+testPlot(tImage,tLabel,test)
