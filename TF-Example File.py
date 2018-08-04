@@ -3,11 +3,7 @@
 
 from TFuLibaray import *
 
-dirString = pickDirectory()
-
-print (dirString)
-
-tImage, tLabel = loadPic(dirString)
+tImage, tLabel = loadMTrain()
 
 #dImages(tImage, tLabel)
 

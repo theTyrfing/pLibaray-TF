@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from time import time
 from math import sqrt
+import mnist
 import random
 
 #Import Constants
@@ -39,7 +40,7 @@ def pickFile(fExt):
     fLocation = Tk()
     fLocation.filename = filedialog.askopenfilename(initialdir = "/",\
                                                     title = "Select file",\
-                                                    filetypes = ((fExt+" files","*."+fExt),/
+                                                    filetypes = ((fExt+" files","*."+fExt),\
                                                                  ("all files","*.*")))
     fString = fLocation.filename
     fLocation.destroy()
@@ -49,14 +50,28 @@ def saveFile(fExt):
     fLocation = Tk()
     fLocation.filename = filedialog.asksaveasfilename(initialdir = "/",\
                                                       title = "Select file",\
-                                                      iletypes = ((fExt+" files","*."+fExt),/
+                                                      filetypes = ((fExt+" files","*."+fExt),\
                                                                   ("all files","*.*")))
     fString = fLocation.filename
     fLocation.destroy()
     return fString
 
+#importing from MNIST
+def loadMTrain():
+    images = mnist.train_images()
+    labels = mnist.train_labels()
+    return images, labels
+
+def loadMTest():
+    images = mnist.test_images()
+    labels = mnist.test_labels()
+    return images, labels
+
 #importing photos
-def loadPic(pathString):
+def loadPic():
+    
+    pathString = pickDirectory()
+    
     directories = [d for d in os.listdir(pathString) 
                    if os.path.isdir(os.path.join(pathString, d))]
     labels = []
@@ -166,13 +181,13 @@ class snNetwork:
         self.images_flat = tf.contrib.layers.flatten(self.x)
 
         # Fully connected layer 
-        self.logits = tf.contrib.layers.fully_connected(self.images_flat, nOutput tf.nn.relu)
+        self.logits = tf.contrib.layers.fully_connected(self.images_flat, nOutput, tf.nn.relu)
 
         # Define a loss function
         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels = self.y, 
                                                                     logits = self.logits))
         # Define an optimizer 
-        self.train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(self.loss)
+        self.train_op = tf.train.AdamOptimizer(learning_rate=learnRate).minimize(self.loss)
 
         # Convert logits to label indexes
         self.correct_pred = tf.argmax(self.logits, 1)

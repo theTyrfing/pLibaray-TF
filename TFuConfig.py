@@ -13,6 +13,8 @@ iSize = 28   #Image Size
 
 iFile = ".ppm" #Image Size
 
-nEpoch = 201 #Number of Epochs/Training Loops
+nEpoch = 10000 #Number of Epochs/Training Loops
 
-nOutput = 61 #Number of Outputs
+nOutput = 10 #Number of Outputs
+
+learnRate = 0.5 #Learning Rate
