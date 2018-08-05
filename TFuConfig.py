@@ -13,8 +13,22 @@ iSize = 28   #Image Size
 
 iFile = ".ppm" #Image Size
 
-nEpoch = 10000 #Number of Epochs/Training Loops
+nEpoch = 201 #Number of Epochs/Training Loops
 
-nOutput = 10 #Number of Outputs
+nOutput = 62 #Number of Outputs
 
-learnRate = 0.5 #Learning Rate
+learnRate = 0.0005 #Learning Rate
+
+batchSize = -1 #Size of Batch, Default = None
+
+cOptimizer = "Adam" #Optimizer choice ("Adam" , "Gradient")
+
+cType = 0 #Evaluation method
+
+IMAGE_PIXELS = iSize * iSize
+
+NUM_CLASSES = nOutput
+
+hiddenU1 = 125
+
+hiddenU2 = 32

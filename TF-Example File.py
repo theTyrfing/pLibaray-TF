@@ -3,18 +3,18 @@
 
 from TFuLibaray import *
 
-tImage, tLabel = loadMTrain()
+tImage, tLabel = loadPic()
+
+#testI, testL = loadMTest()
 
 #dImages(tImage, tLabel)
 
 test = snNetwork()
 
-print (test.seed)
-
 test.configTF()
-
-testPrint(test)
 
 test.training(tImage,tLabel)
 
 testPlot(tImage,tLabel,test)
+
+#testRun(testI,testL,test)
