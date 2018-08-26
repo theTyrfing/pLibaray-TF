@@ -6,6 +6,7 @@ import os
 from shutil import copy2
 import numpy as np
 import win32com.client as win32
+from tClasses import sObj
 
 #Word Application Start
 word = win32.gencache.EnsureDispatch("Word.Application")
@@ -17,18 +18,6 @@ bidName = "00 54 22 - Schedule of Contract Unit Prices.docx"
 sheetNames = ["Project Parameter","BidForm","SList","SectionList","Submittals"]
 divisions = {0,1,2,3,4,5,6,7,8,9,15,23,26,32}
 dirAuto = os.path.dirname(os.path.realpath(__file__))
-
-#Section Class
-class sObj:
-    pass
-
-    def _init_(self):
-        self.sID = 0
-        self.sNum  = "00 00 00"
-        self.sName = "Default"
-        self.sPage = 1
-        self.state = 0
-        self.related = []
 
 #Open Dialog Function
 def openDialog(fExt):

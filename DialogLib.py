@@ -32,4 +32,4 @@ def saveFile(fExt):
     if fname == "":
         return ""
     else:
-        return fname
+        return fname + "." + fExt

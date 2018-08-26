@@ -1,58 +1,14 @@
-import tensorflow
 from openpyxl import load_workbook, Workbook
-import win32com.client as win32
 from os import listdir
 import os
 from os.path import isfile, join,isdir
 from DialogLib import *
+from sProg import *
+from mConfig import *
+from tClasses import itemObj, sObj, cObj
+import re
 
-class itemObj:
-    pass
-
-    def _init_(self):
-        self.iNum  = "00 00 00"
-        self.iName = ""
-        self.iDecp = "Default"
-        self.unit = "Unit"
-        self.unitRate = 0.0
-        self.contractor = "Test"
-        self.date = ""
-        self.project = ""
-        self.qu = 1
-
-def sfileList(mypath):
-    sList =[]
-    nList=[]
-    files = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-    for fs in files:
-        i = fs.find("-")
-        tString = fs[:i-1]
-        tString2 = fs[i+1:]
-        tString2 = tString2(".docx","")
-        tString2 = tString2(".doc","")
-        tString = tString.replace(" ","")
-        tString = tString[:2]+" "+tString[3:4]+" "+tString[5:6]
-        sList = sList.append(tString)
-        nList = sList.append(tString2)
-    return sList,nList
-
-def bidForm():
-    word = win32.gencache.EnsureDispatch("Word.Application")
-    word.Visible = 0
-    word.DisplayAlerts = 0
-
-    tList = []
-
-    fname = pickFile("docx")
-    doc = word.Documents.Open(fname)
-
-    bidTable = doc.Tables(1)
-
-    for row in bidTable.Rows:
-        for cell in row.Cells:
-            if (len(cell.Range.Value)) > 1:
-                tList.append(cell.Range.Value)
-    return tList
+unitPath =""
 
 def gatherBids():
     #Item Object Array
@@ -66,14 +22,17 @@ def gatherBids():
         if f.endswith("xlsx")]
         
     for f in file_names:
-        print(f)
+        print( "Processing file: "+f)
         if str(f).find(".xlsx") != -1:
             iList.extend(compileItems(str(f)))
     return iList
     
 def compileItems(fname):
     wb = load_workbook(fname,data_only=True)
-    ws = wb["Detailed"]
+    try:
+        ws = wb["Detailed"]
+    except:
+        ws = wb.worksheets[0]        
 
     t2List = []    
 
@@ -134,9 +93,14 @@ def findCol(ws,row):
     return x
 
 def getContractors(wb,col):
-    ws_sum = wb["Summary ALL"]
+    try:
+        ws_sum = wb["Summary ALL"]
+    except:
+        ws_sum = wb.worksheets[0]
+        
     contractor = []
-    for row in ws_sum.iter_rows(min_row=15, min_col= 2, max_col=col, max_row=15):
+    
+    for row in ws_sum.iter_rows(min_row=14, min_col= 2, max_col=col, max_row=15):
         for cell in row:
             if str(cell.value).find("Base BID") != -1:
                 pass
@@ -146,6 +110,14 @@ def getContractors(wb,col):
                 pass
             elif str(cell.value).find("AVERAGE BID COST") != -1:
                 pass
+            elif str(cell.value).find("Unit Price") != -1:
+                pass
+            elif (str(cell.value).upper()).find("BID SUMMARY") != -1:
+                pass
+            elif ckNum(str(cell.value)):
+                pass
+            elif re.fullmatch(r'\s+',str(cell.value)) != None:
+                pass
             elif cell.value == None:
                 pass
             else:
@@ -154,22 +126,43 @@ def getContractors(wb,col):
 
 def getInfo(ws):
     sProj = ""
-    sDate = "" 
+    sDate = ""
+    sLoc = ""
+    altLoc = ""
+    addPattern = r'(\d+\s(St\.)?\s?([a-zA-Z]+|\s)+[a-zA-Z]+\.?\s?[West|East|North|South|W|E|N|S]?)'
+    projPattern = r'(Project\s*:\s*)(.*)'
+    datePattern = r'(Date\s*:\s*)(.*)'
+    altPattern = r'((MTCC|TSCC|YRCC|YCC|ACC|BCC|YNCC|YRSCC|YRCECC|YRVLCC|SCC|SSCC|PSCC|PCC|OCC|DCC|DSCC|GSCC|HCC|HSCC)\s?(#|No|No\.)?\s?\d+)'
     for row in ws.iter_rows(min_row=9, min_col= 2, max_col=6, max_row=12):
         for cell in row:
-            iProject = str(cell.value).find("Project :")
-            iDate = str(cell.value).find("Date:")
-            if iProject != -1:
-                sProj = str(cell.value)[(iProject + 9):]
-            elif iDate != -1:
-                sDate = str(cell.value)[(iDate + 5):]
+            iLoc = fdString(addPattern,str(cell.value),0)
+            iProject = fdString(projPattern,str(cell.value),2)
+            iDate = fdString(datePattern,str(cell.value),2)
+            ialtLoc = fdString(altPattern,str(cell.value),0)
+            if iProject != None:
+                sProj = iProject
+            elif iDate != None:
+                sDate = iDate
+            elif iLoc != None:
+                sLoc = iLoc
+            elif ialtLoc != None:
+                altLoc = ialtLoc
             else:
                 pass
-    sLoc = str(ws["B10"].value)
+            
+    if sLoc == "" and altLoc != "":
+        sLoc = altLoc
+        
     return sProj, sDate, sLoc
 
+def fdString(pattern, string, num):
+    match = re.search(pattern,string)
+    if match != None:
+        return match.group(num)
+    else:
+        return None
+
 def getItem(sProj, sDate, sLoc, ws,cList,row,col):
-    print("Found Item")
     tList = []
     i = 0
     numBool = False
@@ -177,6 +170,7 @@ def getItem(sProj, sDate, sLoc, ws,cList,row,col):
     unitYes = False
     quantity = 1
     unitValue = ""
+    iID = 1
     for row in ws.iter_rows(min_row=row, min_col= 3, max_col=col, max_row=row):
         for cell in row:
             if str(cell.value).find("N/A") != -1:
@@ -197,7 +191,8 @@ def getItem(sProj, sDate, sLoc, ws,cList,row,col):
                 unitValue = "EA"
                 unitYes = True
             elif len(str(cell.value)) > 5 and ckNum(str(cell.value)) == False:
-                dString = str(cell.value)
+                dString = str(cell.value).replace("\n"," ")
+                #dString = dString.replace("\t","")
             elif ckNum(str(cell.value)) == True:
                 if i < len(cList):
                     if LS == False and numBool == True:
@@ -218,9 +213,11 @@ def getItem(sProj, sDate, sLoc, ws,cList,row,col):
                             tObj.qu = quantity
                             tObj.unitRate = cell.value
                             tObj.contractor = cList[i]
+                            tObj.nID = iID
                             i = i + 1
                             tList.append(tObj)
                             numBool = True
+                            iID = iID + 1
             else:
                 pass
 
@@ -235,9 +232,9 @@ def ckNum(value):
         #print("False")
         return False
     
-def saveData(iList):
-    pathString = pickFile("xlsx")
-    wb = load_workbook(pathString)
+def saveUnitData(iList):
+    pathString = pickFile("xlsm")
+    wb = load_workbook(pathString, keep_vba=True, read_only=False)
     ws = wb["Source Data"]
     i = 0 
     while True:
@@ -247,7 +244,6 @@ def saveData(iList):
         else:
             i = i + 1
     sRow = i + 3
-    print(sRow)
     i = 0
     
     for item in iList:
@@ -261,6 +257,230 @@ def saveData(iList):
         ws.cell(row = sRow+i, column = 13).value = item.qu
         i = i + 1
         
-    wb.save(pathString)        
+    wb.save(pathString)
 
-saveData(gatherBids())
+
+def compile_iObj():
+    pathString = pickFile("xlsm")
+    global unitPath
+    unitPath = pathString
+    wb = load_workbook(pathString)
+    ws = wb["Source Data"]
+
+    iList = []
+    i = 4
+
+    while True:
+        if ws.cell(row = i, column = 1).value != None:
+            tObj=itemObj()
+            tObj.iNum  = ws.cell(row = i, column = 7).value      #Section Number
+            tObj.iName = ws.cell(row = i, column = 4).value      #Name of Item
+            tObj.iDecp = ws.cell(row = i, column = 5).value      #Description
+            tObj.unit = ws.cell(row = i, column = 12).value       #Unit 
+            tObj.unitRate = ws.cell(row = i, column = 11).value   #Unit Rate
+            tObj.contractor = ws.cell(row = i, column = 9).value #Contractor 
+            tObj.date = ws.cell(row = i, column = 2).value       #Date
+            tObj.project = ws.cell(row = i, column = 3).value    #Project Name
+            tObj.qu = ws.cell(row = i, column = 13).value         #Quantity
+            tObj.sLife = ws.cell(row = i, column = 10).value      #Service Life
+            tObj.cCode =ws.cell(row = i, column = 8).value       #Company Code
+            tObj.notes = ws.cell(row = i, column = 14).value      #Notes
+            tObj.gID = ws.cell(row = i, column = 15).value        #Group ID
+            tObj.sID = ws.cell(row = i, column = 16).value        #SubGroup ID
+            tObj.uni = ws.cell(row = i, column = 6).value         #Uniformat
+            iList.append(tObj)
+            i = i + 1
+        else:
+            break
+
+    return iList
+
+def compile_gObj():
+    global unitPath
+    pathString = unitPath
+    wb = load_workbook(pathString)
+    ws = wb["Source Item List"]
+
+    gList = []
+    i = 3
+
+    while True:
+        if ws.cell(row = i, column = 1).value != None:
+            tObj=itemObj()
+            tObj.iNum  = ws.cell(row = i, column = 6).value      #Section Number
+            tObj.iName = ws.cell(row = i, column = 3).value      #Name of Item
+            tObj.iDecp = ws.cell(row = i, column = 4).value      #Description
+            tObj.unit = ws.cell(row = i, column = 10).value       #Unit
+            tObj.unitRate = "=AVGCOND(A*,B+)"                    #Unit Rate
+            tObj.uniForm = ws.cell(row = i, column = 5).value    #Contractor 
+            tObj.sLife = ws.cell(row = i, column = 8).value      #Service Life
+            tObj.cCode =ws.cell(row = i, column = 7).value       #Company Code
+            tObj.notes = ws.cell(row = i, column = 11).value      #Notes
+            tObj.gID = ws.cell(row = i, column = 1).value        #Group ID
+            tObj.sID = ws.cell(row = i, column = 2).value        #SubGroup ID
+            gList.append(tObj)
+            i = i + 1
+        else:
+            break
+
+    return gList
+
+def compile_sObj():
+    pathString = pickFile("xlsx")
+    wb = load_workbook(pathString)
+    ws = wb["Sections"]
+
+    sList = []
+    i = 2
+
+    while True:
+        if ws.cell(row = i, column = 1).value != None:
+            tObj = sObj()
+            tObj.sID = ws.cell(row = i, column = 1).value             #ID
+            tObj.sNum  = ws.cell(row = i, column = 3).value           #Section Number
+            tObj.sName = ws.cell(row = i, column = 2).value           #Section Name
+            if ws.cell(row = i, column = 5).value != None:
+                tObj.related = str(ws.cell(row = i, column = 5).value).split(",")         #Related
+            else:
+                tObj.related = None
+            tObj.division = ws.cell(row = i, column = 7).value        #Section Division
+            sList.append(tObj)
+            i = i + 1
+        else:
+            break
+    return sList
+
+def compile_Cat():
+    global unitPath
+    pathString = unitPath
+    wb = load_workbook(pathString, keep_vba=True, read_only=False)
+    ws = wb["Categories"]
+
+    tList = []
+    i = 3
+
+    while True:
+        if ws.cell(row = i, column = 1).value != None:
+            tObj = cObj()
+            tObj.cID = ws.cell(row = i, column = 1).value
+            tObj.cName = ws.cell(row = i, column = 2).value
+            tList.append(tObj)
+            i = i + 1
+        else:
+            break
+
+    return tList
+
+def savModUnit(iList):
+    global unitPath
+    pathString = unitPath
+    wb = load_workbook(pathString, keep_vba=True, read_only=False)
+    ws = wb["Source Data"]
+
+    i = 4
+
+    for item in iList:
+            ws.cell(row = i, column = 7).value = item.iNum      #Section Number
+            ws.cell(row = i, column = 4).value = item.iName      #Name of Item
+            ws.cell(row = i, column = 5).value = item.iDecp     #Description
+            ws.cell(row = i, column = 12).value = item.unit       #Unit 
+            ws.cell(row = i, column = 9).value = item.contractor #Contractor 
+            ws.cell(row = i, column = 2).value = item.date       #Date
+            ws.cell(row = i, column = 3).value = item.project    #Project Name
+            ws.cell(row = i, column = 13).value = item.qu         #Quantity
+            ws.cell(row = i, column = 10).value = item.sLife 
+            ws.cell(row = i, column = 8).value = item.cCode       #Company Code
+            ws.cell(row = i, column = 14).value = item.notes      #Notes
+            ws.cell(row = i, column = 15).value = item.gID        #Group ID
+            ws.cell(row = i, column = 16).value = item.sID       #SubGroup ID
+            ws.cell(row = i, column = 6).value = item.uni         #Uniformat
+            i = i + 1
+
+    wb.save(pathString)
+
+def savMSingle(index, iList):
+    global unitPath
+    pathString = unitPath
+    wb = load_workbook(pathString, keep_vba=True, read_only=False)
+    ws = wb["Source Data"]
+
+    item = iList[index]
+    
+    i = 4
+    while True:
+        vl= ws.cell(row = i, column = 5).value
+        if vl == item.iDecp:
+            break
+        else:
+            i = i + 1
+
+    ws.cell(row = i, column = 7).value = item.iNum      #Section Number
+    ws.cell(row = i, column = 4).value = item.iName      #Name of Item
+    ws.cell(row = i, column = 5).value = item.iDecp     #Description
+    ws.cell(row = i, column = 12).value = item.unit       #Unit 
+    ws.cell(row = i, column = 9).value = item.contractor #Contractor 
+    ws.cell(row = i, column = 2).value = item.date       #Date
+    ws.cell(row = i, column = 3).value = item.project    #Project Name
+    ws.cell(row = i, column = 13).value = item.qu         #Quantity
+    ws.cell(row = i, column = 10).value = item.sLife 
+    ws.cell(row = i, column = 8).value = item.cCode       #Company Code
+    ws.cell(row = i, column = 14).value = item.notes      #Notes
+    ws.cell(row = i, column = 15).value = item.gID        #Group ID
+    ws.cell(row = i, column = 16).value = item.sID       #SubGroup ID
+    ws.cell(row = i, column = 6).value = item.uni         #Uniformat
+
+    wb.save(pathString)
+    print("Saving entry to file....Done!")
+
+def savgObj(item):
+    global unitPath
+    pathString = unitPath
+    wb = load_workbook(pathString, keep_vba=True, read_only=False)
+    ws = wb["Source Item List"]
+
+    i = 1 
+    while True:
+        vl= ws.cell(row = i, column = 1).value
+        if vl == None:
+            break
+        else:
+            i = i + 1
+
+    ws.cell(row = i, column = 6).value = item.iNum      #Section Number
+    ws.cell(row = i, column = 3).value = item.iName      #Name of Item
+    ws.cell(row = i, column = 4).value = item.iDecp     #Description
+    ws.cell(row = i, column = 10).value = item.unit     #Unit 
+    ws.cell(row = i, column = 8).value = item.sLife 
+    ws.cell(row = i, column = 7).value = item.cCode       #Company Code
+    ws.cell(row = i, column = 11).value = item.notes      #Notes
+    ws.cell(row = i, column = 1).value = item.gID        #Group ID
+    ws.cell(row = i, column = 2).value = item.sID       #SubGroup ID
+    ws.cell(row = i, column = 5).value = item.uniForm    #Uniformat
+
+    wb.save(pathString)
+   
+def sMaker():
+    print("Compiling new section list...")
+    saveSectionData(getSectionList())
+    
+def uMaker():
+    print("Gathering Bids for Unit Cost Tables")
+    saveUnitData(gatherBids())
+    
+def mdMaker():
+    print("Gathering Bids for Machine Learning")
+    saveLite(gatherBids())
+    
+def uiChoice():
+    pass
+
+##def pUnit():
+##    print("Preparing script, for further processing of the bids...")
+##    wb = load_workbook(pickFile("xlsm"))
+##    ws = wb["Source Data"]
+##    i = 3
+##
+##    while True:
+##        
+##
+##    wb.save("bidDataProcessed.xlsx")
