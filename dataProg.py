@@ -4,11 +4,13 @@ import os
 from os.path import isfile, join,isdir
 from DialogLib import *
 from sProg import *
-from mConfig import *
 from tClasses import itemObj, sObj, cObj
 import re
+from time import sleep
+from configparser import ConfigParser
 
 unitPath =""
+sectionPath = ""
 
 def gatherBids():
     #Item Object Array
@@ -260,10 +262,60 @@ def saveUnitData(iList):
     wb.save(pathString)
 
 
-def compile_iObj():
-    pathString = pickFile("xlsm")
+def callDialogs():
     global unitPath
-    unitPath = pathString
+    global sectionPath
+
+    if os.path.isfile("load_Paths.ini"):
+        while True:
+            print ("Do you want to use the existing loaded files (Y/N)? ")
+            bExist = input(">>> ")
+            if bExist == "Y" or bExist == "N":
+                break
+            else:
+                print ("Invalid Entry")
+    else:
+        bExist = "N"
+
+    if bExist == "N":
+        print("Pick Unit Price File...")
+        sleep(5)      
+        pathString = pickFile("xlsm")
+
+        print("Pick Section File...")
+        sleep(5)      
+        pathString2 = pickFile("xlsx")
+
+        writePaths(pathString,pathString2)
+
+        unitPath = pathString
+        sectionPath = pathString2
+        
+    else:
+        tArray = readPaths()
+        unitPath = tArray[0]
+        sectionPath = tArray[1]
+        
+def readPaths():
+    fPaths = ConfigParser()
+    fPaths.read("load_Paths.ini")
+
+    path1 = fPaths['DEFAULT']['Unit Table Path']
+    path2 = fPaths['DEFAULT']['Section List Path']
+    
+    return [path1,path2]
+
+def writePaths(path1,path2):
+    fPaths = ConfigParser()
+
+    fPaths['DEFAULT'] = {'Unit Table Path' : path1,
+                         'Section List Path':path2}
+    with open("load_Paths.ini", 'w') as configfile:
+        fPaths.write(configfile)
+
+def compile_iObj():
+    global unitPath
+    pathString = unitPath
     wb = load_workbook(pathString)
     ws = wb["Source Data"]
 
@@ -288,6 +340,7 @@ def compile_iObj():
             tObj.gID = ws.cell(row = i, column = 15).value        #Group ID
             tObj.sID = ws.cell(row = i, column = 16).value        #SubGroup ID
             tObj.uni = ws.cell(row = i, column = 6).value         #Uniformat
+            tObj.nID = ws.cell(row = i, column = 1).value         #Internal ID            
             iList.append(tObj)
             i = i + 1
         else:
@@ -326,7 +379,8 @@ def compile_gObj():
     return gList
 
 def compile_sObj():
-    pathString = pickFile("xlsx")
+    global sectionPath
+    pathString = sectionPath
     wb = load_workbook(pathString)
     ws = wb["Sections"]
 
@@ -408,8 +462,8 @@ def savMSingle(index, iList):
     
     i = 4
     while True:
-        vl= ws.cell(row = i, column = 5).value
-        if vl == item.iDecp:
+        vl= ws.cell(row = i, column = 1).value
+        if vl == item.nID:
             break
         else:
             i = i + 1
@@ -431,6 +485,7 @@ def savMSingle(index, iList):
 
     wb.save(pathString)
     print("Saving entry to file....Done!")
+    print("--------------------------------\n")
 
 def savgObj(item):
     global unitPath

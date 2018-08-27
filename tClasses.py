@@ -11,7 +11,7 @@ class itemObj:
         self.date = ""            #Date
         self.project = ""         #Project Name
         self.qu = 1               #Quantity
-        self.nID = 0              #Internal ID for duplicates
+        self.nID = 0              #Internal ID (for duplicates/importing)
         self.sLife = 0            #Service Life
         self.cCode =""            #Company Code
         self.notes = ""           #Notes

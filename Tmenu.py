@@ -1,5 +1,5 @@
 from ckWord import ckTools
-from dataProg import compile_iObj, compile_sObj, compile_gObj, ckNum, savMSingle
+from dataProg import compile_iObj, compile_sObj, compile_gObj, ckNum, savMSingle, callDialogs
 from dataProg import sMaker,uMaker,mdMaker,uiChoice, savModUnit, savgObj,compile_Cat
 from tClasses import gObj
 from mlProg import mlSave
@@ -13,10 +13,10 @@ skipTen = 10
     
 keyChain =['A','B','C','D','E']
 
-labChain = ["Get Section List",
-                "Get Unit Price Bid Data",
-                "Get Bid Data for ML",
-                "Process Bid Data for ML",
+labChain = ["Get Section List from Spec Directory",
+                "Get Unit Price Bid Data from Bid Data",
+                "Get Bid Data for Machine Learning",
+                "Process Bid Data for Machine Learning",
                 "Unit Pricing Data Processing"]
 
 funChain = ["sMaker","uMaker","mdMaker","mlSave","uiChoice"]
@@ -152,7 +152,7 @@ class cMenu:
                 aKey = self.mItem[i].mCKey
                 aName = self.mItem[i].mCName
                 print((mTemp.replace('...',str(aKey))).replace('***',str(aName)))
-        print((mTemp.replace('...',"<b")).replace('***',"Done or Quit"))
+        print((mTemp.replace('...',"/b")).replace('***',"Done or Quit"))
         print("-------" + self.mCName + "-------")
 
     def MLoop(self):
@@ -162,34 +162,44 @@ class cMenu:
 
     def Vloop(self):
         while True:
-            return self.rValMenu() is not None
+            value = self.rValMenu()
+            if value != None:
+                return value
             
     def rValMenu(self):
         self.dsMenu()
         iKey = input(">>>")
-
+        iKey = str(iKey)
+        
         for v in self.mItem:
-            if iKey == "<b":
-                return "<b"
+            
+            
+            if iKey == "/b":
+                return "/b"
                 
             try:
                 if v.key == iKey:
+                    
                     if v.func == "":
                         return v.fVar
                     else:
                         return v.vFunc()
+                    
             except:
                 if v.mCKey == iKey:
-                    return v.Vloop() is not "<b" or None
-
+                    value2 = v.Vloop()
+                    if value2 != "/b" and value2 != None:
+                        return value2
+                
         return None
         
     def inputMenu(self):
         self.dsMenu()
         iKey = input(">>>")
-
+        iKey = str(iKey)
+        
         for m in self.mItem:
-            if iKey == "<b":
+            if iKey == "/b":
                 return True
             elif iKey == "skip":
                 global skipTen
@@ -230,6 +240,9 @@ def getPrintoutlite(argList):
     print("\nContact: " + str(argList[0][argList[1]].contractor))
     print("\nUnit Price: " + str(argList[0][argList[1]].unitRate))
     print("\nUnit: " + str(argList[0][argList[1]].unit))
+    print("\nUniformat: " + str(argList[0][argList[1]].uni))
+    print("\nGroup ID: " + str(argList[0][argList[1]].gID))
+    print("\nSub-Group ID: " + str(argList[0][argList[1]].sID))
 
 def autoKey(tList):
     nList = []
@@ -258,10 +271,17 @@ def mSpecS(argList):
 
         menuSpec.addMenu(tMenuObj,specChain[k],lSpec[k])
 
-    index = menuSpec.Vloop()
-    if index != "<b":
-        assignValue(argList[0],argList[1],argList[2],sList[index].sNum)
+    menuSpec.addMItem("None","X","",None,False,"None")
 
+    index = menuSpec.Vloop()
+    
+    if index != "/b" and index != "None":
+        assignValue(argList[0],argList[1],argList[2],sList[index-1].sNum)
+    elif index == "None":
+        assignValue(argList[0],argList[1],argList[2],"None")
+    else:
+        pass
+    
 def mSpecL(argList):
     lSpec = autoKey(specChain)
     menuSpec = cMenu()
@@ -271,7 +291,7 @@ def mSpecL(argList):
     for k in range(0,len(specChain)):
         tMenuObj = cMenu()
         tMenuObj.mStarter()
-        miniKey = 1
+        miniKey = 0
         for sg in sList:
             if sg.division != "A":
                 if int(sg.division) == int(sdivisions[k]):
@@ -279,13 +299,18 @@ def mSpecL(argList):
                         tMenuObj.addMItem(sg.sNum + "-" + sg.sName,str(miniKey),"",None,False,sg.sID)
                         miniKey = miniKey + 1
 
+        
         menuSpec.addMenu(tMenuObj,specChain[k],lSpec[k])
-
+        
+    menuSpec.addMItem("None","X","",None,False,"None")
+    
     index = menuSpec.Vloop()
-    if index != "<b":
-        return sList[index].sNum
+    if index != "/b" and index != "None":
+        return sList[index-1].sNum
+    elif index == "None":
+        return "None"
     else:
-        return "<b"
+        return "/b"
 
 def groupMenu(argList):
     getPrintoutlite(argList)
@@ -304,14 +329,14 @@ def groupMenu(argList):
         tMenuObj.addMItem("New Generic Item","/N","create_gObj",argList)
         for k in range(0,len(gList)):
             if gList[k].gID == cList[con].cID:
-                tMenuObj.addMItem(gList[k].iName,miniKey,"",None,False,k)
+                tMenuObj.addMItem(gList[k].iName,str(miniKey),"",None,False,k)
                 miniKey = miniKey + 1
 
         menuG.addMenu(tMenuObj,cList[con].cName,cList[con].cID)
 
     index = menuG.Vloop()
 
-    if index != "<b" and index != "<n>":
+    if index != "/b" and index != "<n>":
         assignValue(argList[0],argList[1],argList[2][0],gList[index].gID)
         assignValue(argList[0],argList[1],argList[2][1],gList[index].sID)
 
@@ -321,6 +346,7 @@ def assignValue(tObj,index,varName,value):
 def itemProgMenu():
     iSetting = ""
     fSetting = ""
+    ssSetting = ""
     
     print("Starting Data Processing Routine...")
     while iSetting != "P" and iSetting != "B":
@@ -332,16 +358,25 @@ def itemProgMenu():
         fSetting = input("Filter Setting => All [A], Spec Section [S], & Grouping[G]: ")
         if fSetting != "A" and fSetting != "S" and fSetting != "G":
             print("Invalid Entry.")
+
+    while ssSetting != "Y" and ssSetting != "N":
+        ssSetting = input("Duplicate Entry Setting => Do you want skip & write over duplicate entries (Y/N): ")
+        if ssSetting != "Y" and ssSetting != "N":
+            print("Invalid Entry.")
     
     iMenu = cMenu()
     iMenu.mStarter()
     uKey = autoKey(unitChain)
+    
     global iList 
     global gList 
     global sList
     global cList
     global boolp
     global skipTen
+
+    callDialogs()
+    
     iList = compile_iObj()
     gList = compile_gObj()
     sList = compile_sObj()
@@ -352,20 +387,26 @@ def itemProgMenu():
         
     for iC in range(0,len(iList)):
         boolp = False
-
         tSpec = iList[iC].iNum
         tGID = iList[iC].gID
+        bolEntry = sameEntry(iC,iList,ssSetting)
         
-        if skipTen >= 10 and ckEnt(fSetting,tSpec,tGID) == True:
+        if skipTen >= 10 and ckEnt(fSetting,tSpec,tGID) == True and bolEntry == True:
             for i in range(0,len(unitChain)):
                 if i != 14:
                     iMenu.mItem[i].fArg = [iList,iC,iObjName[i]]
                 else:
                     pass                
 
+            print("ID#:"+str(iC+1))
             getPrintoutlite([iList,iC,iObjName[0]])
-            print("ID#:"+str(iC))
+            
             iMenu.MLoop()
+            if iSetting == "P" and skipTen >=10:
+                savMSingle(iC,iList)
+        elif skipTen >= 10 and ckEnt(fSetting,tSpec,tGID) == True and bolEntry == False:
+            print("Duplicate Entry - Overwriting certain values...")
+            sameOverwrite(bolEntry,iC,iList)
             if iSetting == "P" and skipTen >=10:
                 savMSingle(iC,iList)
         elif skipTen >= 10 and ckEnt(fSetting,tSpec,tGID) == False:
@@ -398,7 +439,27 @@ def ckEnt(fSet,sNum,gid):
 def savEntry():
     global boolp
     boolp = True
-                   
+
+def sameEntry(index, itemList, ss):
+    if ss == "Y":
+        if itemList[index].iDecp == itemList[index-1].iDecp:
+            return False
+        else:
+            return True
+    else:
+        return True
+    
+def sameOverwrite(bol, index, itemList):
+    if bol == False:
+        itemList[index].iName = itemList[index-1].iName
+        itemList[index].iNum = itemList[index-1].iNum
+        itemList[index].sLife = itemList[index-1].sLife
+        itemList[index].cCode = itemList[index-1].cCode
+        itemList[index].notes = itemList[index-1].notes        
+        itemList[index].gID = itemList[index-1].gID
+        itemList[index].sID = itemList[index-1].sID
+        itemList[index].uni = itemList[index-1].uni
+    
 def create_gObj(argList):
     global gList
 
@@ -415,13 +476,10 @@ def create_gObj(argList):
     tObj.cCode = input("New Company Code:")    #Company Code
     tObj.notes = input("Notes:")               #Notes
     tObj.gID = input("Assign Group ID:")       #Group ID
-    while True:
-        tSID = input("Assign Subgroup ID:")
-        if ckNum(tSID):
-            break
-        else:
-            print("Invalid Input")
-            
+    tSID = 1
+    for gItem in gList:
+        if gItem.gID == tObj.gID:
+            tSID = tSID + 1
     tObj.sID = tSID                            #SubGroup ID
 
     if input("Confirm save (Y/N):") == "Y":
@@ -429,7 +487,7 @@ def create_gObj(argList):
         savgObj(tObj)
         return "<n>"
     else:
-        return "<b"
+        return "/b"
                    
 def startup():
     
