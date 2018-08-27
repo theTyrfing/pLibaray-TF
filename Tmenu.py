@@ -1,5 +1,4 @@
 from ckWord import ckTools
-from mConfig import *
 from dataProg import compile_iObj, compile_sObj, compile_gObj, ckNum, savMSingle
 from dataProg import sMaker,uMaker,mdMaker,uiChoice, savModUnit, savgObj,compile_Cat
 from tClasses import gObj
